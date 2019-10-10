@@ -1,0 +1,136 @@
+version: "2.1"
+description: |
+  Wrap the cdflow setup/run in a CircleCI orb to minimise the
+  config yaml that developers will have to write in their repos
+
+examples:
+    basic:
+      description: |
+        Simple pipeline with just release and deploy
+
+      usage:
+        version: 2.1
+        orbs:
+          cdflow: acuris/cdflow@dev:first
+
+        workflows:
+          test-pipeline:
+            jobs:
+              - cdflow/release:
+                  platform-config: test-platform-config
+                  context: DevTeam-Test
+              - cdflow/deploy:
+                  env: aslive
+                  requires: 
+                    - cdflow/release
+                  context: DevTeam-Test
+    
+    add_hold_step:
+      description: |
+        Shows how to run a plan step and the have a manual hold/approval before deploying
+      usage:
+        version: 2.1
+        orbs:
+          cdflow: acuris/cdflow@dev:first
+
+        workflows:
+          test-pipeline:
+            jobs:
+              - cdflow/release:
+                  platform-config: test-platform-config
+                  context: DevTeam-Test
+              - cdflow/plan:
+                  env: aslive
+                  requires: 
+                    - cdflow/release
+                  context: DevTeam-Test
+              - hold:
+                  type: approval
+              - cdflow/deploy:
+                  env: aslive
+                  requires: 
+                    - hold
+                  context: DevTeam-Test
+                
+
+executors:
+  cdflow-exec:
+    machine: 
+      image: circleci/classic:latest
+
+commands:
+  install-cdflow:
+    steps:
+      - restore_cache:
+          keys:
+            # when lock file changes, use increasingly general patterns to restore cache
+            - cdflow-packages-v8-
+      - run: 
+          name: Get cdflow
+          command: |
+            pip install --upgrade cdflow
+            find /opt/circleci/.pyenv/ > /tmp/pyenv.filelist
+      - save_cache:
+          paths:
+            - /opt/circleci/.pyenv/
+          key: cdflow-packages-v8-{{ checksum "/tmp/pyenv.filelist" }}
+  get-platform-config:
+    parameters:
+      command-platform-config:
+        description: The name of your teams platform config repository 
+        type: string
+    steps:
+      - run:
+          name: Get Platform Config
+          command: |
+            git clone https://github.com/mergermarket/<< parameters.command-platform-config >>.git platform-config
+
+
+jobs:
+
+  release:
+    description: Runs cdflow release 
+    executor: cdflow-exec
+    parameters:
+      platform-config:
+        description: The name of your teams platform config repository 
+        type: string
+    steps:
+      - checkout
+      - get-platform-config:
+          command-platform-config: << parameters.platform-config >>
+      - install-cdflow
+      - run:
+          name: Run Release 
+          command: |
+            cdflow release --platform-config ./platform-config ${CIRCLE_WORKFLOW_WORKSPACE_ID:0:8} -v 
+
+  plan:
+    description: Runs cdflow plan 
+    executor: cdflow-exec
+    parameters:
+      env:
+        description: The name of the environment you want to deploy to
+        type: string    
+    steps:
+      - checkout
+      - install-cdflow
+      - run:
+          name: Run Plan
+          command: |
+            cdflow deploy << parameters.env >> ${CIRCLE_WORKFLOW_WORKSPACE_ID:0:8} -v -p
+
+  deploy:
+    description: Runs cdflow deploy
+    executor: cdflow-exec
+    parameters:
+      env:
+        description: The name of the environment you want to deploy to
+        type: string    
+    steps:
+      - checkout
+      - install-cdflow
+      - run:
+          name: Run Deploy 
+          command: |
+            cdflow deploy << parameters.env >> ${CIRCLE_WORKFLOW_WORKSPACE_ID:0:8} -v 
