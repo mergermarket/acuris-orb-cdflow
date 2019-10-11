@@ -11,7 +11,7 @@ examples:
       usage:
         version: 2.1
         orbs:
-          cdflow: acuris/cdflow@dev:first
+          cdflow: acuris/cdflow@0.1.1
 
         workflows:
           test-pipeline:
@@ -27,11 +27,12 @@ examples:
     
     add_hold_step:
       description: |
-        Shows how to run a plan step and the have a manual hold/approval before deploying
+        Shows how to run a plan step and have a manual hold/approval 
+        before deploying
       usage:
         version: 2.1
         orbs:
-          cdflow: acuris/cdflow@dev:first
+          cdflow: acuris/cdflow@0.1.1
 
         workflows:
           test-pipeline:
@@ -46,6 +47,8 @@ examples:
                   context: DevTeam-Test
               - hold:
                   type: approval
+                  requires:
+                    - cdflow/plan
               - cdflow/deploy:
                   env: aslive
                   requires: 
