@@ -99,9 +99,6 @@ jobs:
   release:
     description: Runs cdflow release 
     executor: cdflow-exec
-    notify:
-      webhooks:
-        - url: https://outlook.office.com/webhook/5ac3a7fc-911a-4499-baa2-ef98c5e37bae@94d278d4-98ce-45e5-98f5-8a7297697dc1/IncomingWebhook/8573c39ac1f2486b87d573d914078003/d80d3aec-5408-4f28-b2a2-a86cd93f0a48
     parameters:
       platform-config:
         description: The name of your teams platform config repository 
